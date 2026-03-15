@@ -11,6 +11,7 @@ type TrainingMethod = Literal["value_iteration", "policy_iteration"]
 type RunMode = Literal["train", "evaluate", "gui"]
 type ActionSelectionMode = Literal["weighted_majority_vote", "majority_vote"]
 type CornerName = Literal["top_left", "top_right", "bottom_left", "bottom_right"]
+type BestCheckpointMetric = Literal["max_tile", "score", "reward"]
 
 
 @dataclass(slots=True)
@@ -59,6 +60,12 @@ class Config:
     learning_curve_dir: Path = Path("learning_curves")
     artifact_dir: Path = Path("artifacts")
     model_path: Path = Path("artifacts/agent_policy.pkl")
+    save_checkpoints: bool = True
+    checkpoint_every_n_episodes: int = 500
+    checkpoint_dir: Path = Path("artifacts/checkpoints")
+    save_best_checkpoint: bool = True
+    best_checkpoint_metric: BestCheckpointMetric = "max_tile"
+    best_model_path: Path = Path("artifacts/best_agent_policy.pkl")
     visualize_training: bool = False
     visualize_training_every_n_episodes: int = 1
     visualize_evaluation: bool = True
@@ -163,6 +170,10 @@ class Config:
             raise ValueError("vote_weight_max_tile must be non-negative.")
         if self.vote_weight_sum_tiles < 0.0:
             raise ValueError("vote_weight_sum_tiles must be non-negative.")
+        if self.checkpoint_every_n_episodes <= 0:
+            raise ValueError("checkpoint_every_n_episodes must be positive.")
+        if self.best_checkpoint_metric not in ("max_tile", "score", "reward"):
+            raise ValueError("best_checkpoint_metric must be 'max_tile', 'score', or 'reward'.")
         if self.visualize_training_every_n_episodes <= 0:
             raise ValueError("visualize_training_every_n_episodes must be positive.")
         if self.visualization_step_delay_ms < 0:

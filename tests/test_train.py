@@ -279,3 +279,49 @@ def test_train_from_config_applies_epsilon_decay(tmp_path: Path) -> None:
     agent, _ = train_from_config(config)
 
     assert agent.epsilon == pytest.approx(config.train_epsilon_end)
+
+
+def test_train_from_config_saves_checkpoints(tmp_path: Path) -> None:
+    checkpoint_dir = tmp_path / "checkpoints"
+    config = Config(
+        training_method="value_iteration",
+        num_training_episodes=3,
+        max_steps_per_episode=3,
+        spawn_prob_2=1.0,
+        spawn_prob_4=0.0,
+        visualize_evaluation=False,
+        model_path=tmp_path / "agent.pkl",
+        learning_curve_dir=tmp_path,
+        checkpoint_dir=checkpoint_dir,
+        checkpoint_every_n_episodes=1,
+        save_checkpoints=True,
+    )
+
+    train_from_config(config)
+
+    checkpoint_files = sorted(checkpoint_dir.glob("agent_episode_*.pkl"))
+    assert len(checkpoint_files) == 3
+    assert checkpoint_files[0].name == "agent_episode_000001.pkl"
+    assert checkpoint_files[-1].name == "agent_episode_000003.pkl"
+
+
+def test_train_from_config_saves_best_checkpoint(tmp_path: Path) -> None:
+    best_model_path = tmp_path / "best_agent.pkl"
+    config = Config(
+        training_method="value_iteration",
+        num_training_episodes=3,
+        max_steps_per_episode=3,
+        spawn_prob_2=1.0,
+        spawn_prob_4=0.0,
+        visualize_evaluation=False,
+        model_path=tmp_path / "agent.pkl",
+        learning_curve_dir=tmp_path,
+        save_checkpoints=False,
+        save_best_checkpoint=True,
+        best_checkpoint_metric="max_tile",
+        best_model_path=best_model_path,
+    )
+
+    train_from_config(config)
+
+    assert best_model_path.exists()

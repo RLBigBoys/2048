@@ -49,6 +49,9 @@ class EpisodeStats:
     truncated: bool
 
 
+type BestCheckpointScore = tuple[float, int, int]
+
+
 @dataclass(slots=True)
 class TrainingSummary:
     """Collection of episode-level statistics."""
@@ -647,6 +650,68 @@ def _set_agent_epsilon_for_progress(
     agent.epsilon = start_epsilon + ((end_epsilon - start_epsilon) * progress)
 
 
+def _save_agent_checkpoint(
+    agent: LocalMajorityAgent,
+    *,
+    episode_index: int,
+) -> Path:
+    """Persist an episode checkpoint for long-running training jobs."""
+    checkpoint_dir = agent.config.checkpoint_dir
+    checkpoint_path = checkpoint_dir / f"agent_episode_{episode_index:06d}.pkl"
+    return agent.save(checkpoint_path)
+
+
+def _save_checkpoint_if_needed(
+    agent: LocalMajorityAgent,
+    *,
+    episode_index: int,
+) -> Path | None:
+    """Save a checkpoint when the configured episode interval is reached."""
+    if not agent.config.save_checkpoints:
+        return None
+    if episode_index % agent.config.checkpoint_every_n_episodes != 0:
+        return None
+    return _save_agent_checkpoint(agent, episode_index=episode_index)
+
+
+def _best_checkpoint_score(
+    episode_stats: EpisodeStats,
+    *,
+    metric: str,
+) -> BestCheckpointScore:
+    """Return a comparable tuple for selecting the best checkpoint."""
+    if metric == "max_tile":
+        primary = float(episode_stats.max_tile)
+    elif metric == "score":
+        primary = float(episode_stats.score)
+    elif metric == "reward":
+        primary = float(episode_stats.reward)
+    else:
+        raise ValueError(f"Unsupported best checkpoint metric: {metric}.")
+    return (primary, episode_stats.score, episode_stats.steps)
+
+
+def _save_best_checkpoint_if_needed(
+    agent: LocalMajorityAgent,
+    episode_stats: EpisodeStats,
+    *,
+    best_score: BestCheckpointScore | None,
+) -> BestCheckpointScore | None:
+    """Persist the best-performing model seen so far."""
+    if not agent.config.save_best_checkpoint:
+        return best_score
+
+    current_score = _best_checkpoint_score(
+        episode_stats,
+        metric=agent.config.best_checkpoint_metric,
+    )
+    if best_score is not None and current_score <= best_score:
+        return best_score
+
+    agent.save(agent.config.best_model_path)
+    return current_score
+
+
 def train_value_iteration(
     num_episodes: int,
     *,
@@ -662,6 +727,7 @@ def train_value_iteration(
     agent = agent or LocalMajorityAgent(config=env.config)
     summary = TrainingSummary()
     viewer: Pygame2048Viewer | None = None
+    best_score: BestCheckpointScore | None = None
     if env.config.visualize_training:
         viewer = Pygame2048Viewer(env.config, title="2048 Training")
 
@@ -672,16 +738,24 @@ def train_value_iteration(
             total_episodes=num_episodes,
         )
         episode_viewer = viewer if (viewer is not None and episode_index % env.config.visualize_training_every_n_episodes == 0) else None
-        summary.episodes.append(
-            _run_training_episode(
-                env,
-                agent,
-                use_policy=False,
-                update_mode="value_iteration",
-                viewer=episode_viewer,
-                episode_index=episode_index,
-                total_episodes=num_episodes,
-            )
+        episode_stats = _run_training_episode(
+            env,
+            agent,
+            use_policy=False,
+            update_mode="value_iteration",
+            viewer=episode_viewer,
+            episode_index=episode_index,
+            total_episodes=num_episodes,
+        )
+        summary.episodes.append(episode_stats)
+        _save_checkpoint_if_needed(
+            agent,
+            episode_index=episode_index,
+        )
+        best_score = _save_best_checkpoint_if_needed(
+            agent,
+            episode_stats,
+            best_score=best_score,
         )
 
     curve_path = learning_curve_path or (
@@ -713,6 +787,7 @@ def train_policy_iteration(
     agent = agent or LocalMajorityAgent(config=env.config)
     summary = TrainingSummary()
     viewer: Pygame2048Viewer | None = None
+    best_score: BestCheckpointScore | None = None
     if env.config.visualize_training:
         viewer = Pygame2048Viewer(env.config, title="2048 Training")
 
@@ -727,16 +802,24 @@ def train_policy_iteration(
                 total_episodes=total_episodes,
             )
             episode_viewer = viewer if (viewer is not None and episode_index % env.config.visualize_training_every_n_episodes == 0) else None
-            summary.episodes.append(
-                _run_training_episode(
-                    env,
-                    agent,
-                    use_policy=True,
-                    update_mode="policy_iteration",
-                    viewer=episode_viewer,
-                    episode_index=episode_index,
-                    total_episodes=total_episodes,
-                )
+            episode_stats = _run_training_episode(
+                env,
+                agent,
+                use_policy=True,
+                update_mode="policy_iteration",
+                viewer=episode_viewer,
+                episode_index=episode_index,
+                total_episodes=total_episodes,
+            )
+            summary.episodes.append(episode_stats)
+            _save_checkpoint_if_needed(
+                agent,
+                episode_index=episode_index,
+            )
+            best_score = _save_best_checkpoint_if_needed(
+                agent,
+                episode_stats,
+                best_score=best_score,
             )
         agent.improve_policy()
 
