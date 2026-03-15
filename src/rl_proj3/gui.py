@@ -27,6 +27,34 @@ def _get_tile_text_color(config: Config, value: int) -> tuple[int, int, int]:
     return config.secondary_text_color
 
 
+def _format_valid_actions(valid_actions: list[int]) -> str:
+    """Return a compact, stable string with valid action names."""
+    action_names: list[str] = []
+    for action, label in ((UP, "U"), (DOWN, "D"), (LEFT, "L"), (RIGHT, "R")):
+        if action in valid_actions:
+            action_names.append(label)
+    return ", ".join(action_names) if action_names else "-"
+
+
+def _format_status_text(
+    current_info: dict[str, Any],
+    *,
+    truncated: bool,
+    terminated: bool,
+    target_tile: int,
+) -> str:
+    """Build a human-readable status line for the debug panel."""
+    valid_actions_text = _format_valid_actions(current_info.get("valid_actions", []))
+
+    if truncated:
+        return "Status: step limit reached | press R to reset"
+    if terminated:
+        return "Status: no valid moves left | press R to reset"
+    if current_info["max_tile"] >= target_tile:
+        return "Status: target tile reached | continue or press R"
+    return f"Controls: arrows move | R reset | Valid actions: {valid_actions_text}"
+
+
 def run_gui(config: Config | None = None) -> None:
     """Launch the pygame window used for manual environment debugging."""
     import pygame
@@ -40,9 +68,10 @@ def run_gui(config: Config | None = None) -> None:
     screen = pygame.display.set_mode((env_config.window_width, env_config.window_height))
     clock = pygame.time.Clock()
 
-    header_font = pygame.font.SysFont("arial", 28, bold=True)
-    info_font = pygame.font.SysFont("arial", 22, bold=False)
-    tile_font = pygame.font.SysFont("arial", 30, bold=True)
+    header_font = pygame.font.SysFont("arial", 24, bold=True)
+    info_font = pygame.font.SysFont("arial", 18, bold=False)
+    detail_font = pygame.font.SysFont("arial", 15, bold=False)
+    tile_font = pygame.font.SysFont("arial", 28, bold=True)
 
     action_by_key = {
         pygame.K_UP: UP,
@@ -57,49 +86,72 @@ def run_gui(config: Config | None = None) -> None:
 
     def draw_status_panel(current_info: dict[str, Any]) -> None:
         """Draw the top panel with scalar environment statistics."""
+        panel_text_color = env_config.debug_text_color
         panel_rect = pygame.Rect(
             env_config.window_padding,
             env_config.window_padding,
             env_config.window_width - (2 * env_config.window_padding),
-            env_config.header_height - env_config.window_padding,
+            env_config.header_height,
         )
         pygame.draw.rect(screen, env_config.panel_color, panel_rect, border_radius=12)
 
-        title_surface = header_font.render("2048 RL Debugger", True, env_config.accent_text_color)
+        title_surface = header_font.render("2048 RL Debugger", True, panel_text_color)
         screen.blit(
             title_surface,
             (panel_rect.x + 16, panel_rect.y + 12),
         )
 
-        stats_text = (
-            f"Score: {current_info['score']}    "
-            f"Max Tile: {current_info['max_tile']}    "
-            f"Reward: {last_reward:.3f}    "
-            f"Step: {current_info['step_count']}"
+        left_column_x = panel_rect.x + 16
+        right_column_x = panel_rect.centerx + 8
+        first_metrics_y = panel_rect.y + 50
+        second_metrics_y = panel_rect.y + 74
+
+        score_surface = info_font.render(
+            f"Score: {current_info['score']}",
+            True,
+            panel_text_color,
         )
-        stats_surface = info_font.render(stats_text, True, env_config.accent_text_color)
-        screen.blit(
-            stats_surface,
-            (panel_rect.x + 16, panel_rect.y + 58),
+        max_tile_surface = info_font.render(
+            f"Max Tile: {current_info['max_tile']}",
+            True,
+            panel_text_color,
+        )
+        reward_surface = info_font.render(
+            f"Reward: {last_reward:.3f}",
+            True,
+            panel_text_color,
+        )
+        step_surface = info_font.render(
+            f"Step: {current_info['step_count']}",
+            True,
+            panel_text_color,
         )
 
-        if truncated:
-            message = "Episode truncated: step limit reached. Press R to reset."
-            message_color = env_config.status_fail_color
-        elif terminated:
-            message = "Episode terminated: no valid moves left. Press R to reset."
-            message_color = env_config.status_fail_color
-        elif current_info["max_tile"] >= env_config.target_tile:
-            message = "Target tile reached. Continue playing or press R to reset."
-            message_color = env_config.status_win_color
-        else:
-            message = "Controls: arrows move, R resets the board."
-            message_color = env_config.accent_text_color
+        screen.blit(score_surface, (left_column_x, first_metrics_y))
+        screen.blit(max_tile_surface, (left_column_x, second_metrics_y))
+        screen.blit(reward_surface, (right_column_x, first_metrics_y))
+        screen.blit(step_surface, (right_column_x, second_metrics_y))
 
-        message_surface = info_font.render(message, True, message_color)
+        message = _format_status_text(
+            current_info,
+            truncated=truncated,
+            terminated=terminated,
+            target_tile=env_config.target_tile,
+        )
+        message_surface = detail_font.render(message, True, panel_text_color)
         screen.blit(
             message_surface,
-            (panel_rect.x + 16, panel_rect.y + 88),
+            (panel_rect.x + 16, panel_rect.y + 106),
+        )
+
+        debug_text = (
+            f"Board changed: {current_info['changed']} | Merge gain: {current_info['merge_gain']} | "
+            f"Empty delta: {current_info['delta_empty']} | Max exp delta: {current_info['delta_max_exp']}"
+        )
+        debug_surface = detail_font.render(debug_text, True, panel_text_color)
+        screen.blit(
+            debug_surface,
+            (panel_rect.x + 16, panel_rect.y + 128),
         )
 
     def draw_board(current_board: np.ndarray) -> None:

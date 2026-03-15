@@ -27,10 +27,10 @@ class Config:
 
     clip_exp: int = 8
 
-    window_padding: int = 16
-    cell_size: int = 96
+    header_height: int = 150
+    cell_size: int = 90
     cell_gap: int = 10
-    header_height: int = 120
+    window_padding: int = 16
     fps: int = 60
 
     background_color: RGBColor = (250, 248, 239)
@@ -41,6 +41,7 @@ class Config:
     primary_text_color: RGBColor = (119, 110, 101)
     secondary_text_color: RGBColor = (249, 246, 242)
     accent_text_color: RGBColor = (255, 255, 255)
+    debug_text_color: RGBColor = (24, 24, 24)
     status_win_color: RGBColor = (111, 168, 94)
     status_fail_color: RGBColor = (192, 80, 77)
 
