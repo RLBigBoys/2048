@@ -2,9 +2,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from math import isclose
+from pathlib import Path
+from typing import Literal
 
 
 type RGBColor = tuple[int, int, int]
+type TrainingMethod = Literal["value_iteration", "policy_iteration"]
+type RunMode = Literal["train", "evaluate", "gui"]
+type ActionSelectionMode = Literal["weighted_majority_vote", "majority_vote"]
+type CornerName = Literal["top_left", "top_right", "bottom_left", "bottom_right"]
 
 
 @dataclass(slots=True)
@@ -21,11 +27,42 @@ class Config:
     spawn_prob_4: float = 0.1
 
     invalid_move_penalty: float = -1.0
-    reward_score_scale: float = 1.0 / 128.0
-    reward_empty_bonus: float = 0.1
-    reward_max_tile_bonus: float = 1.0
+    reward_score_scale: float = 1.0 / 1024.0
+    reward_empty_bonus: float = 0.02
+    reward_max_tile_bonus: float = 3.0
+    reward_target_tile_bonus: float = 500.0
+    reward_stagnation_penalty: float = 0.01
+    reward_max_tile_in_corner_bonus: float = 0.5
+    reward_max_tile_out_of_corner_penalty: float = 0.1
+    stagnation_penalty_after_steps: int = 20
+    terminate_on_target_tile: bool = True
+    target_corner: CornerName = "top_left"
 
-    clip_exp: int = 8
+    clip_exp: int = 11
+    run_mode: RunMode = "train"
+    training_method: TrainingMethod = "value_iteration"
+    
+    num_training_episodes: int = 2500
+
+    num_policy_rounds: int = 50
+    episodes_per_policy_round: int = 10
+    num_evaluation_episodes: int = 10
+    train_alpha: float = 0.1
+    train_gamma: float = 0.99
+    train_epsilon: float = 0.20
+    train_epsilon_end: float = 0.01
+    use_epsilon_decay: bool = True
+    train_policy_tau: float = 0.3
+    action_selection_mode: ActionSelectionMode = "weighted_majority_vote"
+    vote_weight_max_tile: float = 1.0
+    vote_weight_sum_tiles: float = 0.15
+    learning_curve_dir: Path = Path("learning_curves")
+    artifact_dir: Path = Path("artifacts")
+    model_path: Path = Path("artifacts/agent_policy.pkl")
+    visualize_training: bool = False
+    visualize_training_every_n_episodes: int = 1
+    visualize_evaluation: bool = True
+    visualization_step_delay_ms: int = 120
 
     header_height: int = 150
     cell_size: int = 90
@@ -94,6 +131,56 @@ class Config:
             raise ValueError("max_steps_per_episode must be positive.")
         if self.seed < 0:
             raise ValueError("seed must be non-negative.")
+        if self.run_mode not in ("train", "evaluate", "gui"):
+            raise ValueError("run_mode must be 'train', 'evaluate', or 'gui'.")
+        if self.training_method not in ("value_iteration", "policy_iteration"):
+            raise ValueError("training_method must be 'value_iteration' or 'policy_iteration'.")
+        if self.num_training_episodes <= 0:
+            raise ValueError("num_training_episodes must be positive.")
+        if self.num_policy_rounds <= 0:
+            raise ValueError("num_policy_rounds must be positive.")
+        if self.episodes_per_policy_round <= 0:
+            raise ValueError("episodes_per_policy_round must be positive.")
+        if self.num_evaluation_episodes <= 0:
+            raise ValueError("num_evaluation_episodes must be positive.")
+        if not 0.0 < self.train_alpha <= 1.0:
+            raise ValueError("train_alpha must be in (0, 1].")
+        if not 0.0 <= self.train_gamma <= 1.0:
+            raise ValueError("train_gamma must be in [0, 1].")
+        if not 0.0 <= self.train_epsilon <= 1.0:
+            raise ValueError("train_epsilon must be in [0, 1].")
+        if not 0.0 <= self.train_epsilon_end <= 1.0:
+            raise ValueError("train_epsilon_end must be in [0, 1].")
+        if self.train_epsilon_end > self.train_epsilon:
+            raise ValueError("train_epsilon_end must be less than or equal to train_epsilon.")
+        if not 0.0 < self.train_policy_tau <= 1.0:
+            raise ValueError("train_policy_tau must be in (0, 1].")
+        if self.action_selection_mode not in ("weighted_majority_vote", "majority_vote"):
+            raise ValueError(
+                "action_selection_mode must be 'weighted_majority_vote' or 'majority_vote'.",
+            )
+        if self.vote_weight_max_tile < 0.0:
+            raise ValueError("vote_weight_max_tile must be non-negative.")
+        if self.vote_weight_sum_tiles < 0.0:
+            raise ValueError("vote_weight_sum_tiles must be non-negative.")
+        if self.visualize_training_every_n_episodes <= 0:
+            raise ValueError("visualize_training_every_n_episodes must be positive.")
+        if self.visualization_step_delay_ms < 0:
+            raise ValueError("visualization_step_delay_ms must be non-negative.")
+        if self.reward_target_tile_bonus < 0.0:
+            raise ValueError("reward_target_tile_bonus must be non-negative.")
+        if self.reward_stagnation_penalty < 0.0:
+            raise ValueError("reward_stagnation_penalty must be non-negative.")
+        if self.reward_max_tile_in_corner_bonus < 0.0:
+            raise ValueError("reward_max_tile_in_corner_bonus must be non-negative.")
+        if self.reward_max_tile_out_of_corner_penalty < 0.0:
+            raise ValueError("reward_max_tile_out_of_corner_penalty must be non-negative.")
+        if self.stagnation_penalty_after_steps < 0:
+            raise ValueError("stagnation_penalty_after_steps must be non-negative.")
+        if self.target_corner not in ("top_left", "top_right", "bottom_left", "bottom_right"):
+            raise ValueError(
+                "target_corner must be 'top_left', 'top_right', 'bottom_left', or 'bottom_right'.",
+            )
         if self.spawn_prob_2 < 0.0 or self.spawn_prob_4 < 0.0:
             raise ValueError("Spawn probabilities must be non-negative.")
         if not isclose(self.spawn_prob_2 + self.spawn_prob_4, 1.0, rel_tol=0.0, abs_tol=1e-12):

@@ -16,12 +16,31 @@ BLOCK_SLICES_2X2: Final[tuple[BlockSlice, ...]] = (
     ((0, 2), (1, 3)),
     ((0, 2), (2, 4)),
     ((1, 3), (0, 2)),
+    ((1, 3), (1, 3)),
     ((1, 3), (2, 4)),
     ((2, 4), (0, 2)),
     ((2, 4), (1, 3)),
     ((2, 4), (2, 4)),
 )
 BLOCKS_2X2: Final[tuple[BlockSlice, ...]] = BLOCK_SLICES_2X2
+BLOCK_SLICES_2X3: Final[tuple[BlockSlice, ...]] = (
+    ((0, 2), (0, 3)),
+    ((0, 2), (1, 4)),
+    ((1, 3), (0, 3)),
+    ((1, 3), (1, 4)),
+    ((2, 4), (0, 3)),
+    ((2, 4), (1, 4)),
+)
+BLOCKS_2X3: Final[tuple[BlockSlice, ...]] = BLOCK_SLICES_2X3
+BLOCK_SLICES_3X2: Final[tuple[BlockSlice, ...]] = (
+    ((0, 3), (0, 2)),
+    ((0, 3), (1, 3)),
+    ((0, 3), (2, 4)),
+    ((1, 4), (0, 2)),
+    ((1, 4), (1, 3)),
+    ((1, 4), (2, 4)),
+)
+BLOCKS_3X2: Final[tuple[BlockSlice, ...]] = BLOCK_SLICES_3X2
 
 
 def tile_to_exp(x: int, clip_exp: int) -> int:
@@ -58,7 +77,7 @@ class FeatureExtractor(ABC):
 
 
 class BlockExtractor(FeatureExtractor):
-    """Extract eight overlapping 2x2 blocks from the board."""
+    """Extract all nine overlapping 2x2 blocks from the 4x4 board."""
 
     def __init__(self, clip_exp: int) -> None:
         """Initialize the extractor with a clipping threshold."""
@@ -70,6 +89,48 @@ class BlockExtractor(FeatureExtractor):
         encoded_blocks: list[FeatureTuple] = []
 
         for (row_start, row_end), (col_start, col_end) in BLOCK_SLICES_2X2:
+            block = board[row_start:row_end, col_start:col_end].reshape(-1)
+            encoded_blocks.append(
+                tuple(tile_to_exp(int(tile), self.clip_exp) for tile in block),
+            )
+
+        return encoded_blocks
+
+
+class BlockExtractor2x3(FeatureExtractor):
+    """Extract all six overlapping 2x3 blocks from the 4x4 board."""
+
+    def __init__(self, clip_exp: int) -> None:
+        """Initialize the extractor with a clipping threshold."""
+        super().__init__(clip_exp=clip_exp)
+
+    def extract(self, board: BoardArray) -> list[FeatureTuple]:
+        """Return encoded tuples for all predefined 2x3 block slices."""
+        _validate_board(board)
+        encoded_blocks: list[FeatureTuple] = []
+
+        for (row_start, row_end), (col_start, col_end) in BLOCK_SLICES_2X3:
+            block = board[row_start:row_end, col_start:col_end].reshape(-1)
+            encoded_blocks.append(
+                tuple(tile_to_exp(int(tile), self.clip_exp) for tile in block),
+            )
+
+        return encoded_blocks
+
+
+class BlockExtractor3x2(FeatureExtractor):
+    """Extract all six overlapping 3x2 blocks from the 4x4 board."""
+
+    def __init__(self, clip_exp: int) -> None:
+        """Initialize the extractor with a clipping threshold."""
+        super().__init__(clip_exp=clip_exp)
+
+    def extract(self, board: BoardArray) -> list[FeatureTuple]:
+        """Return encoded tuples for all predefined 3x2 block slices."""
+        _validate_board(board)
+        encoded_blocks: list[FeatureTuple] = []
+
+        for (row_start, row_end), (col_start, col_end) in BLOCK_SLICES_3X2:
             block = board[row_start:row_end, col_start:col_end].reshape(-1)
             encoded_blocks.append(
                 tuple(tile_to_exp(int(tile), self.clip_exp) for tile in block),

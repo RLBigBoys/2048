@@ -39,6 +39,7 @@ class Game2048Env:
         )
         self.score: int = 0
         self.step_count: int = 0
+        self._steps_without_max_tile_progress: int = 0
         self._terminated: bool = False
         self._truncated: bool = False
 
@@ -54,6 +55,7 @@ class Game2048Env:
         self.board.fill(0)
         self.score = 0
         self.step_count = 0
+        self._steps_without_max_tile_progress = 0
         self._terminated = False
         self._truncated = False
 
@@ -65,6 +67,10 @@ class Game2048Env:
             merge_gain=0,
             delta_empty=0,
             delta_max_exp=0,
+            reached_target_tile=False,
+            stagnation_steps=0,
+            stagnation_penalty_applied=False,
+            max_tile_in_target_corner=self._max_tile_in_target_corner(self.board),
         )
         return self.board.copy(), info
 
@@ -81,6 +87,25 @@ class Game2048Env:
     def _count_empty_cells(board: BoardArray) -> int:
         """Return the number of empty cells on the board."""
         return int(np.count_nonzero(board == 0))
+
+    def _target_corner_index(self) -> tuple[int, int]:
+        """Return the board index of the configured target corner."""
+        last_index = self.config.board_size - 1
+        corner_to_index = {
+            "top_left": (0, 0),
+            "top_right": (0, last_index),
+            "bottom_left": (last_index, 0),
+            "bottom_right": (last_index, last_index),
+        }
+        return corner_to_index[self.config.target_corner]
+
+    def _max_tile_in_target_corner(self, board: BoardArray) -> bool:
+        """Return True when a maximum tile currently occupies the target corner."""
+        max_tile = self._max_tile(board)
+        if max_tile <= 0:
+            return False
+        row_index, col_index = self._target_corner_index()
+        return int(board[row_index, col_index]) == max_tile
 
     @staticmethod
     def _tile_to_log2(tile_value: int) -> int:
@@ -105,6 +130,10 @@ class Game2048Env:
         merge_gain: int,
         delta_empty: int,
         delta_max_exp: int,
+        reached_target_tile: bool,
+        stagnation_steps: int,
+        stagnation_penalty_applied: bool,
+        max_tile_in_target_corner: bool,
     ) -> dict[str, Any]:
         """Assemble the standard ``info`` dictionary for the current state."""
         valid_actions = self._get_valid_actions_for_board(self.board)
@@ -118,6 +147,10 @@ class Game2048Env:
             "merge_gain": merge_gain,
             "delta_empty": delta_empty,
             "delta_max_exp": delta_max_exp,
+            "reached_target_tile": reached_target_tile,
+            "stagnation_steps": stagnation_steps,
+            "stagnation_penalty_applied": stagnation_penalty_applied,
+            "max_tile_in_target_corner": max_tile_in_target_corner,
         }
 
     def _spawn_tile(self) -> bool:
@@ -216,10 +249,22 @@ class Game2048Env:
             reward = float(self.config.invalid_move_penalty)
             delta_empty = 0
             delta_max_exp = 0
+            reached_target_tile = False
+            self._steps_without_max_tile_progress += 1
+            stagnation_penalty_applied = False
+            if (
+                self.config.stagnation_penalty_after_steps > 0
+                and self._steps_without_max_tile_progress >= self.config.stagnation_penalty_after_steps
+            ):
+                reward -= self.config.reward_stagnation_penalty
+                stagnation_penalty_applied = True
+            max_tile_in_target_corner = self._max_tile_in_target_corner(self.board)
         else:
             empty_after_move = self._count_empty_cells(moved_board)
             max_tile_after_move = self._max_tile(moved_board)
             max_exp_after_move = self._tile_to_log2(max_tile_after_move)
+            reached_target_tile = max_tile_after_move >= self.config.target_tile
+            max_tile_in_target_corner = self._max_tile_in_target_corner(moved_board)
 
             delta_empty = empty_after_move - empty_before
             delta_max_exp = max_exp_after_move - max_exp_before
@@ -229,13 +274,32 @@ class Game2048Env:
                 + (delta_empty * self.config.reward_empty_bonus)
                 + (delta_max_exp * self.config.reward_max_tile_bonus)
             )
+            if delta_max_exp > 0:
+                self._steps_without_max_tile_progress = 0
+            else:
+                self._steps_without_max_tile_progress += 1
+            stagnation_penalty_applied = False
+            if (
+                self.config.stagnation_penalty_after_steps > 0
+                and self._steps_without_max_tile_progress >= self.config.stagnation_penalty_after_steps
+            ):
+                reward -= self.config.reward_stagnation_penalty
+                stagnation_penalty_applied = True
+            if max_tile_in_target_corner:
+                reward += self.config.reward_max_tile_in_corner_bonus
+            else:
+                reward -= self.config.reward_max_tile_out_of_corner_penalty
+            if reached_target_tile:
+                reward += self.config.reward_target_tile_bonus
 
             self.board[:, :] = moved_board
             self.score += merge_gain
             self._spawn_tile()
 
         valid_actions = self.get_valid_actions()
-        terminated = len(valid_actions) == 0
+        terminated = reached_target_tile and self.config.terminate_on_target_tile
+        if not terminated:
+            terminated = len(valid_actions) == 0
         truncated = self.step_count >= self.config.max_steps_per_episode
 
         self._terminated = terminated
@@ -246,5 +310,9 @@ class Game2048Env:
             merge_gain=merge_gain if changed else 0,
             delta_empty=delta_empty,
             delta_max_exp=delta_max_exp,
+            reached_target_tile=reached_target_tile,
+            stagnation_steps=self._steps_without_max_tile_progress,
+            stagnation_penalty_applied=stagnation_penalty_applied,
+            max_tile_in_target_corner=max_tile_in_target_corner,
         )
         return self.board.copy(), float(reward), terminated, truncated, info
