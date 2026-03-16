@@ -255,11 +255,15 @@ $$Q(z_t^{(i)}, a_t) \leftarrow Q(z_t^{(i)}, a_t) + \alpha_t \left( y_t^{(i)} - Q
 
 For policy evaluation, the next-state bootstrap term is the masked policy expectation:
 
-$$y_t^{(i)} = \begin{cases} r_{t+1}, & \text{if done or no valid next actions} \\ r_{t+1} + \gamma \sum_{a' \in \mathcal{A}_{\text{valid}}(s_{t+1})} \pi(a' \mid z_{t+1}^{(i)}) Q(z_{t+1}^{(i)}, a'), & \text{otherwise} \end{cases}$$
+```math
+y_t^{(i)} = \begin{cases} r_{t+1}, & \text{if done or no valid next actions} \\ r_{t+1} + \gamma \sum_{a' \in \mathcal{A}_{\text{valid}}(s_{t+1})} \pi(a' \mid z_{t+1}^{(i)}) Q(z_{t+1}^{(i)}, a'), & \text{otherwise} \end{cases}
+```
 
 After policy-evaluation episodes, policy improvement moves each local policy toward greedy:
 
-$$\pi_{\text{new}}(\cdot \mid z) = (1-\tau)\pi_{\text{old}}(\cdot \mid z) + \tau\pi_{\text{greedy}}(\cdot \mid z)$$
+```math
+\pi_{\text{new}}(\cdot \mid z) = (1-\tau)\pi_{\text{old}}(\cdot \mid z) + \tau\pi_{\text{greedy}}(\cdot \mid z)
+```
 
 where 
 
