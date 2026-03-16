@@ -257,7 +257,9 @@ For policy evaluation, the next-state bootstrap term is the masked policy expect
 
 ```math
 y_t^{(i)} = \begin{cases} 
-r_{t+1}, & \text{if done or no valid next actions} \\ 
+r_{t+1}, & \text{if done or no valid next actions} \\  
+
+\\
 
 r_{t+1} + \gamma \sum_{a' \in \mathcal{A}_{\text{valid}}(s_{t+1})} 
 \pi(a' \mid z_{t+1}^{(i)}) Q(z_{t+1}^{(i)}, a') 
