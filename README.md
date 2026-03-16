@@ -225,9 +225,9 @@ $$G_t = \sum_{k=0}^{\infty} \gamma^k R_{t+k+1}$$
 
 The optimal action-value function satisfies Bellman optimality:
 
-$$
+```math
 q^{*}(s,a) = \mathbb{E} [R_{t+1} + \gamma \max_{a' \in \mathcal{A}} q^{*}(S_{t+1}, a') \mid S_t = s, A_t = a ]
-$$
+```
 
 ### 10.2. Local state-action representation
 
