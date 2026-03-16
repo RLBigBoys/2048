@@ -1,3 +1,6 @@
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
 # 2048 RL Project
 
 This project is dedicated to training an agent to play 2048. Below is a step‑by‑step description of how the project evolved, what was done at each stage, and how the agent’s behavior and metrics changed over time.
