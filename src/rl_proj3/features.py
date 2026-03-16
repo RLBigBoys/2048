@@ -7,9 +7,9 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-type BoardArray = NDArray[np.int32]
-type FeatureTuple = tuple[int, ...]
-type BlockSlice = tuple[tuple[int, int], tuple[int, int]]
+BoardArray = NDArray[np.int32]
+FeatureTuple = tuple[int, ...]
+BlockSlice = tuple[tuple[int, int], tuple[int, int]]
 
 BLOCK_SLICES_2X2: Final[tuple[BlockSlice, ...]] = (
     ((0, 2), (0, 2)),

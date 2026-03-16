@@ -4,6 +4,7 @@ import csv
 import os
 import pickle
 from dataclasses import dataclass, field
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -22,10 +23,12 @@ from rl_proj3.features import (
 from rl_proj3.gui import Pygame2048Viewer
 
 
-type PolicyArray = np.ndarray
-type TaggedFeature = tuple[str, FeatureTuple]
-type QTable = dict[TaggedFeature, np.ndarray]
-type PolicyTable = dict[TaggedFeature, PolicyArray]
+logger = logging.getLogger(__name__)
+
+PolicyArray = np.ndarray
+TaggedFeature = tuple[str, FeatureTuple]
+QTable = dict[TaggedFeature, np.ndarray]
+PolicyTable = dict[TaggedFeature, PolicyArray]
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_LEARNING_CURVE_DIR = PROJECT_ROOT / "learning_curves"
@@ -40,7 +43,6 @@ ACTION_LABELS = {
 @dataclass(slots=True)
 class EpisodeStats:
     """Aggregate metrics for one training episode."""
-
     reward: float
     steps: int
     score: int
@@ -48,8 +50,7 @@ class EpisodeStats:
     terminated: bool
     truncated: bool
 
-
-type BestCheckpointScore = tuple[float, int, int]
+BestCheckpointScore = tuple[float, int, int]
 
 
 @dataclass(slots=True)
@@ -619,7 +620,7 @@ def _run_training_episode(
             if not viewer.wait(agent.config.visualization_step_delay_ms):
                 break
 
-    return EpisodeStats(
+    episode_stats = EpisodeStats(
         reward=float(episode_reward),
         steps=env.step_count,
         score=env.score,
@@ -627,6 +628,16 @@ def _run_training_episode(
         terminated=terminated,
         truncated=truncated,
     )
+    logger.debug(
+        "Episode finished: reward=%.3f, score=%d, max_tile=%d, steps=%d, terminated=%s, truncated=%s",
+        episode_stats.reward,
+        episode_stats.score,
+        episode_stats.max_tile,
+        episode_stats.steps,
+        episode_stats.terminated,
+        episode_stats.truncated,
+    )
+    return episode_stats
 
 
 def _set_agent_epsilon_for_progress(
@@ -748,6 +759,16 @@ def train_value_iteration(
             total_episodes=num_episodes,
         )
         summary.episodes.append(episode_stats)
+        if episode_index % 1000 == 0 or episode_index == 1:
+            logger.info(
+                "Value-iteration episode %d/%d: reward=%.3f, score=%d, max_tile=%d, steps=%d",
+                episode_index,
+                num_episodes,
+                episode_stats.reward,
+                episode_stats.score,
+                episode_stats.max_tile,
+                episode_stats.steps,
+            )
         _save_checkpoint_if_needed(
             agent,
             episode_index=episode_index,
@@ -812,6 +833,16 @@ def train_policy_iteration(
                 total_episodes=total_episodes,
             )
             summary.episodes.append(episode_stats)
+            if episode_index % 1000 == 0 or episode_index == 1:
+                logger.info(
+                    "Policy-iteration episode %d/%d: reward=%.3f, score=%d, max_tile=%d, steps=%d",
+                    episode_index,
+                    total_episodes,
+                    episode_stats.reward,
+                    episode_stats.score,
+                    episode_stats.max_tile,
+                    episode_stats.steps,
+                )
             _save_checkpoint_if_needed(
                 agent,
                 episode_index=episode_index,

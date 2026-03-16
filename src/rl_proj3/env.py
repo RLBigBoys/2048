@@ -15,8 +15,8 @@ RIGHT: int = 3
 
 ACTIONS: tuple[int, int, int, int] = (UP, DOWN, LEFT, RIGHT)
 
-type BoardArray = NDArray[np.int32]
-type LineArray = NDArray[np.int32]
+BoardArray = NDArray[np.int32]
+LineArray = NDArray[np.int32]
 
 
 class Game2048Env:
@@ -106,6 +106,46 @@ class Game2048Env:
             return False
         row_index, col_index = self._target_corner_index()
         return int(board[row_index, col_index]) == max_tile
+
+    def _snake_indices(self) -> list[tuple[int, int]]:
+        """Return board indices following a snake pattern from the target corner."""
+        size = self.config.board_size
+        indices: list[tuple[int, int]] = []
+
+        if self.config.target_corner in ("top_left", "top_right"):
+            row_range = range(0, size)
+        else:
+            row_range = range(size - 1, -1, -1)
+
+        for row_offset, row in enumerate(row_range):
+            if (
+                self.config.target_corner in ("top_left", "bottom_left")
+                and row_offset % 2 == 0
+            ) or (
+                self.config.target_corner in ("top_right", "bottom_right")
+                and row_offset % 2 == 1
+            ):
+                col_range = range(0, size)
+            else:
+                col_range = range(size - 1, -1, -1)
+
+            for col in col_range:
+                indices.append((row, col))
+
+        return indices
+
+    def _snake_alignment_score(self, board: BoardArray) -> float:
+        """Return a scalar score for how well tiles follow a snake pattern."""
+        indices = self._snake_indices()
+        exponents: list[int] = [
+            self._tile_to_log2(int(board[row, col])) for row, col in indices
+        ]
+        score = 0.0
+        length = len(exponents)
+        for position, exponent in enumerate(exponents):
+            weight = length - position
+            score += weight * float(exponent)
+        return score
 
     @staticmethod
     def _tile_to_log2(tile_value: int) -> int:
@@ -269,10 +309,22 @@ class Game2048Env:
             delta_empty = empty_after_move - empty_before
             delta_max_exp = max_exp_after_move - max_exp_before
 
+            snake_score_before = self._snake_alignment_score(board_before)
+            snake_score_after = self._snake_alignment_score(moved_board)
+            delta_snake = snake_score_after - snake_score_before
+
+            large_merge_bonus = (
+                self.config.reward_large_merge_factor * float(merge_gain ** 2)
+                if merge_gain > 0
+                else 0.0
+            )
+
             reward = (
                 (merge_gain * self.config.reward_score_scale)
+                + large_merge_bonus
                 + (delta_empty * self.config.reward_empty_bonus)
                 + (delta_max_exp * self.config.reward_max_tile_bonus)
+                + (self.config.reward_snake_factor * float(delta_snake))
             )
             if delta_max_exp > 0:
                 self._steps_without_max_tile_progress = 0

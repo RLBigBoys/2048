@@ -6,12 +6,12 @@ from pathlib import Path
 from typing import Literal
 
 
-type RGBColor = tuple[int, int, int]
-type TrainingMethod = Literal["value_iteration", "policy_iteration"]
-type RunMode = Literal["train", "evaluate", "gui"]
-type ActionSelectionMode = Literal["weighted_majority_vote", "majority_vote"]
-type CornerName = Literal["top_left", "top_right", "bottom_left", "bottom_right"]
-type BestCheckpointMetric = Literal["max_tile", "score", "reward"]
+RGBColor = tuple[int, int, int]
+TrainingMethod = Literal["value_iteration", "policy_iteration"]
+RunMode = Literal["train", "evaluate", "gui"]
+ActionSelectionMode = Literal["weighted_majority_vote", "majority_vote"]
+CornerName = Literal["top_left", "top_right", "bottom_left", "bottom_right"]
+BestCheckpointMetric = Literal["max_tile", "score", "reward"]
 
 
 @dataclass(slots=True)
@@ -31,6 +31,8 @@ class Config:
     reward_score_scale: float = 1.0 / 1024.0
     reward_empty_bonus: float = 0.02
     reward_max_tile_bonus: float = 3.0
+    reward_large_merge_factor: float = 1e-6
+    reward_snake_factor: float = 0.1
     reward_target_tile_bonus: float = 500.0
     reward_stagnation_penalty: float = 0.01
     reward_max_tile_in_corner_bonus: float = 0.5
@@ -40,10 +42,10 @@ class Config:
     target_corner: CornerName = "top_left"
 
     clip_exp: int = 11
-    run_mode: RunMode = "train"
+    run_mode: RunMode = "evaluate"
     training_method: TrainingMethod = "value_iteration"
     
-    num_training_episodes: int = 100000
+    num_training_episodes: int = 1000000
 
     num_policy_rounds: int = 50
     episodes_per_policy_round: int = 10
@@ -59,8 +61,8 @@ class Config:
     vote_weight_sum_tiles: float = 0.15
     learning_curve_dir: Path = Path("learning_curves")
     artifact_dir: Path = Path("artifacts")
-    model_path: Path = Path("artifacts/agent_policy.pkl")
-    resume_training: bool = True
+    model_path: Path = Path("artifacts/best_agent_policy.pkl")
+    resume_training: bool = False
     resume_model_path = Path("artifacts/agent_policy.pkl")
     save_checkpoints: bool = True
     checkpoint_every_n_episodes: int = 5000

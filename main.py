@@ -1,12 +1,20 @@
 from __future__ import annotations
 
+import os
+import sys
 import argparse
+import logging
+
+ROOT_DIR = os.path.dirname(__file__)
+SRC_DIR = os.path.join(ROOT_DIR, "src")
+
+if SRC_DIR not in sys.path:
+    sys.path.insert(0, SRC_DIR)
 
 from rl_proj3.config import Config
 from rl_proj3.evalu import evaluate_agent, evaluate_saved_agent
 from rl_proj3.gui import run_gui
 from rl_proj3.train import train_from_config
-
 
 def _build_arg_parser() -> argparse.ArgumentParser:
     """Create a minimal CLI for selecting the training method."""
@@ -26,6 +34,10 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     """Train the agent configured in Config and print aggregate metrics."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
     args = _build_arg_parser().parse_args()
     config = Config()
 
@@ -40,6 +52,7 @@ def main() -> None:
         return
 
     if config.run_mode == "train":
+        logging.info("Starting training: method=%s, episodes=%d", config.training_method, config.num_training_episodes)
         agent, summary = train_from_config(config)
         evaluation = evaluate_agent(
             agent,
