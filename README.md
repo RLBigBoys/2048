@@ -201,6 +201,8 @@ Therefore, `epsilon decay` was added:
 
 Now `epsilon` decreases linearly over episodes.
 
+---
+
 ## 10. Mathematical formulation (aligned with the code)
 
 This section follows the notation from `BIBLIE_FOR_RL_PROJECT.md`:
@@ -209,33 +211,44 @@ This section follows the notation from `BIBLIE_FOR_RL_PROJECT.md`:
 * $s_t, a_t, r_t$ are concrete realizations (tensors)
 * $\gamma$ is the discount factor
 * $\alpha_t$ is the learning rate at iteration $t$
+* $S_t, A_t, R_t$ are random variables
+* $s_t, a_t, r_t$ are concrete realizations (tensors)
+* $\gamma$ is the discount factor
+* $\alpha_t$ is the learning rate at iteration $t$
 
 ### 10.1. MDP objective
 
 The environment is an MDP $(\mathcal{S}, \mathcal{A}, p, p^R, \gamma)$, where:
+The environment is an MDP $(\mathcal{S}, \mathcal{A}, p, p^R, \gamma)$, where:
 
+* $p(s_{t+1} \mid s_t, a_t)$ defines transition dynamics
+* $p^R(r_t \mid s_t, a_t)$ defines reward dynamics
 * $p(s_{t+1} \mid s_t, a_t)$ defines transition dynamics
 * $p^R(r_t \mid s_t, a_t)$ defines reward dynamics
 
 The discounted return is:
+The discounted return is:
 
+$$G_t = \sum_{k=0}^{\infty} \gamma^k R_{t+k+1}$$
 $$G_t = \sum_{k=0}^{\infty} \gamma^k R_{t+k+1}$$
 
 The optimal action-value function satisfies Bellman optimality:
 
-$$q^*(s,a) = \mathbb{E} \left[ R_{t+1} + \gamma \max_{a' \in \mathcal{A}} q^*(S_{t+1}, a') \mid S_t = s, A_t = a \right]$$
+```math
+q^{*}(s,a) = \mathbb{E} [R_{t+1} + \gamma \max_{a' \in \mathcal{A}} q^{*}(S_{t+1}, a') \mid S_t = s, A_t = a ]
+```
 
 ### 10.2. Local state-action representation
 
 The implementation does not learn one global table over full boards. Instead, each board is transformed into local tagged features:
 
-$$z_t = (\text{feature\_name}, \text{feature\_tuple}) \in \mathcal{Z}$$
+```math
+z_t = (\text{feature\_name}, \text{feature\_tuple}) \in \mathcal{Z}$$
+```
 
 For each local state $z$, the agent stores a vector of action values:
 
 $$Q(z) \in \mathbb{R}^{|\mathcal{A}|}$$
-
-For a transition $s_t \to s_{t+1}$, the code extracts aligned feature lists $\{z_t^{(i)}\}_{i=1}^m$ and $\{z_{t+1}^{(i)}\}_{i=1}^m$, and updates each local table entry.
 
 ### 10.3. Value-iteration mode (`update_value_iteration`)
 
@@ -247,19 +260,33 @@ Then the update is:
 
 $$Q(z_t^{(i)}, a_t) \leftarrow Q(z_t^{(i)}, a_t) + \alpha_t \left( y_t^{(i)} - Q(z_t^{(i)}, a_t) \right)$$
 
-This is the Q-learning-style off-policy update used in training mode `value_iteration`.
-
 ### 10.4. Policy-iteration mode (`policy_evaluation_update`)
 
 For policy evaluation, the next-state bootstrap term is the masked policy expectation:
 
-$$y_t^{(i)} = \begin{cases} r_{t+1}, & \text{if done or no valid next actions} \\ r_{t+1} + \gamma \sum_{a' \in \mathcal{A}_{\text{valid}}(s_{t+1})} \pi(a' \mid z_{t+1}^{(i)}) Q(z_{t+1}^{(i)}, a'), & \text{otherwise} \end{cases}$$
+```math
+y_t^{(i)} = \begin{cases} 
+r_{t+1}, & \text{if done or no valid next actions} \\  
+
+\\
+
+r_{t+1} + \gamma \sum_{a' \in \mathcal{A}_{\text{valid}}(s_{t+1})} 
+\pi(a' \mid z_{t+1}^{(i)}) Q(z_{t+1}^{(i)}, a') 
+& \text{otherwise} 
+\end{cases}
+```
 
 After policy-evaluation episodes, policy improvement moves each local policy toward greedy:
 
-$$\pi_{\text{new}}(\cdot \mid z) = (1-\tau)\pi_{\text{old}}(\cdot \mid z) + \tau\pi_{\text{greedy}}(\cdot \mid z)$$
+```math
+\pi_{\text{new}}(\cdot \mid z) = (1-\tau)\pi_{\text{old}}(\cdot \mid z) + \tau\pi_{\text{greedy}}(\cdot \mid z)
+```
 
-where $\tau = \texttt{train\_policy\_tau}$.
+where 
+
+```math
+\tau = \text{train\_policy\_tau}
+```
 
 ### 10.5. Exploration policy ($\epsilon$-greedy)
 
@@ -267,11 +294,52 @@ During training, action selection uses $\epsilon$-exploration over valid actions
 
 $$A_t = \begin{cases} \text{uniform random from } \mathcal{A}_{\text{valid}}(s_t), & \text{with probability } \epsilon_t \\ \text{aggregated greedy action}, & \text{with probability } 1-\epsilon_t \end{cases}$$
 
+
 ### 10.6. Reward decomposition
 
 For a valid move (`changed=True`), the reward is:
 
-$$r_{t+1} = (\text{merge\_gain}) \cdot c_{\text{score}} + c_{\text{large}} \cdot (\text{merge\_gain})^2 + (\Delta \text{empty}) \cdot c_{\text{empty}} + (\Delta \text{max\_exp}) \cdot c_{\text{max}} + (\Delta \text{snake}) \cdot c_{\text{snake}} + b_{\text{corner}} + b_{\text{target}} - p_{\text{stagnation}}$$
+```math
+r_{t+1} = (\text{merge\_gain}) \cdot c_{\text{score}} + c_{\text{large}} \cdot (\text{merge\_gain})^2 + (\Delta \text{empty}) \cdot c_{\text{empty}} + (\Delta \text{max\_exp}) \cdot c_{\text{max}} + (\Delta \text{snake}) \cdot c_{\text{snake}} + b_{\text{corner}} + b_{\text{target}} - p_{\text{stagnation}}
+```
+
+In code terms, these coefficients correspond to:
+
+* $c_{\text{score}} =$ `reward_score_scale`
+* $c_{\text{large}} =$ `reward_large_merge_factor`
+* $c_{\text{empty}} =$ `reward_empty_bonus`
+* $c_{\text{max}} =$ `reward_max_tile_bonus`
+* $c_{\text{snake}} =$ `reward_snake_factor`
+
+And additive terms are controlled by:
+
+* `reward_max_tile_in_corner_bonus` / `reward_max_tile_out_of_corner_penalty`
+* `reward_target_tile_bonus`
+* `reward_stagnation_penalty` with threshold `stagnation_penalty_after_steps`
+
+For an invalid move (`changed=False`), the base reward is:
+
+```math
+r_{t+1} = \text{invalid\_move\_penalty}
+```
+
+with possible stagnation penalty applied by the same threshold logic.
+
+
+### 10.7. Aggregation from local Q-values to a global action
+
+The global action is selected from local tables by one of two aggregators:
+
+* **`majority_vote`**: Each local feature $z \in \{z^{(i)}\}$ votes for its best valid action: 
+
+```math
+\text{argmax}_{a \in \mathcal{A}_{\text{valid}}} Q(z, a)
+```
+
+* **`weighted_majority_vote`**: The same voting, but each vote is weighted by feature statistics (e.g., max tile or sum of tiles within the pattern).
+
+Thus, learning remains local in $Q(z,a)$, while acting is global through vote aggregation.
+
 
 ## 11. How metrics changed over time
 
