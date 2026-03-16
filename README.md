@@ -204,10 +204,6 @@ Therefore, `epsilon decay` was added:
 
 Now `epsilon` decreases linearly over episodes.
 
-It looks like your GitHub README is suffering from a few classic LaTeX rendering hiccups. Specifically, the "Missing open brace" and "allowed only in math mode" errors occur because GitHub's Markdown renderer can be picky about how underscores and subscripts are handled inside and outside of `$$` blocks.
-
-I have fixed the syntax in the sections below. I also added a helpful diagram of a Markov Decision Process to make the "MDP Objective" section more visually engaging for anyone reading your repo.
-
 ---
 
 ## 10. Mathematical formulation (aligned with the code)
@@ -233,7 +229,7 @@ $$G_t = \sum_{k=0}^{\infty} \gamma^k R_{t+k+1}$$
 The optimal action-value function satisfies Bellman optimality:
 
 $$
-q^{*}(s,a) = \mathbb{E} \left[R_{t+1} + \gamma \max_{a' \in \mathcal{A}} q^{*}(S_{t+1}, a') \mid S_t = s, A_t = a \right]
+q^{*}(s,a) = \mathbb{E} [R_{t+1} + \gamma \max_{a' \in \mathcal{A}} q^{*}(S_{t+1}, a') \mid S_t = s, A_t = a ]
 $$
 
 ### 10.2. Local state-action representation
