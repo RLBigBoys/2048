@@ -840,14 +840,33 @@ def train_from_config(
     """Dispatch training according to the method stored in the config."""
     config = config or Config()
     env = Game2048Env(config)
-    agent = LocalMajorityAgent(
-        config=config,
-        alpha=config.train_alpha,
-        gamma=config.train_gamma,
-        epsilon=config.train_epsilon,
-        policy_tau=config.train_policy_tau,
-        seed=config.seed,
-    )
+
+    if config.resume_training:
+        resume_path = config.resume_model_path or config.model_path
+        if not resume_path.exists():
+            raise FileNotFoundError(
+                f"Resume model not found: {resume_path}",
+            )
+        agent = LocalMajorityAgent.load(resume_path)
+        if agent.config.clip_exp != config.clip_exp:
+            raise ValueError(
+                "resume_training requires the same clip_exp as the saved agent.",
+            )
+        agent.config = config
+        agent.alpha = config.train_alpha
+        agent.gamma = config.train_gamma
+        agent.epsilon = config.train_epsilon
+        agent.policy_tau = config.train_policy_tau
+        agent.rng = np.random.default_rng(config.seed)
+    else:
+        agent = LocalMajorityAgent(
+            config=config,
+            alpha=config.train_alpha,
+            gamma=config.train_gamma,
+            epsilon=config.train_epsilon,
+            policy_tau=config.train_policy_tau,
+            seed=config.seed,
+        )
     learning_curve_dir = config.learning_curve_dir
 
     if config.training_method == "value_iteration":

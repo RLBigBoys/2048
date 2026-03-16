@@ -325,3 +325,43 @@ def test_train_from_config_saves_best_checkpoint(tmp_path: Path) -> None:
     train_from_config(config)
 
     assert best_model_path.exists()
+
+
+def test_train_from_config_can_resume_from_saved_model(tmp_path: Path) -> None:
+    base_model_path = tmp_path / "agent.pkl"
+    initial_config = Config(
+        training_method="value_iteration",
+        num_training_episodes=2,
+        max_steps_per_episode=3,
+        spawn_prob_2=1.0,
+        spawn_prob_4=0.0,
+        visualize_evaluation=False,
+        model_path=base_model_path,
+        learning_curve_dir=tmp_path,
+        save_checkpoints=False,
+        save_best_checkpoint=False,
+    )
+
+    train_from_config(initial_config)
+    initial_agent = LocalMajorityAgent.load(base_model_path)
+    initial_q_table_size = len(initial_agent.q_table)
+
+    resumed_config = Config(
+        training_method="value_iteration",
+        num_training_episodes=1,
+        max_steps_per_episode=3,
+        spawn_prob_2=1.0,
+        spawn_prob_4=0.0,
+        visualize_evaluation=False,
+        model_path=base_model_path,
+        learning_curve_dir=tmp_path,
+        save_checkpoints=False,
+        save_best_checkpoint=False,
+        resume_training=True,
+        resume_model_path=base_model_path,
+    )
+
+    resumed_agent, summary = train_from_config(resumed_config)
+
+    assert len(summary.episodes) == 1
+    assert len(resumed_agent.q_table) >= initial_q_table_size

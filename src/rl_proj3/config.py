@@ -21,7 +21,7 @@ class Config:
     board_size: int = 4
     target_tile: int = 2048
 
-    max_steps_per_episode: int = 1000
+    max_steps_per_episode: int = 2000
     seed: int = 42
 
     spawn_prob_2: float = 0.9
@@ -43,7 +43,7 @@ class Config:
     run_mode: RunMode = "train"
     training_method: TrainingMethod = "value_iteration"
     
-    num_training_episodes: int = 2500
+    num_training_episodes: int = 100000
 
     num_policy_rounds: int = 50
     episodes_per_policy_round: int = 10
@@ -60,6 +60,8 @@ class Config:
     learning_curve_dir: Path = Path("learning_curves")
     artifact_dir: Path = Path("artifacts")
     model_path: Path = Path("artifacts/agent_policy.pkl")
+    resume_training: bool = True
+    resume_model_path = Path("artifacts/agent_policy.pkl")
     save_checkpoints: bool = True
     checkpoint_every_n_episodes: int = 500
     checkpoint_dir: Path = Path("artifacts/checkpoints")
