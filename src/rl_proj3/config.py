@@ -63,7 +63,7 @@ class Config:
     resume_training: bool = True
     resume_model_path = Path("artifacts/agent_policy.pkl")
     save_checkpoints: bool = True
-    checkpoint_every_n_episodes: int = 500
+    checkpoint_every_n_episodes: int = 5000
     checkpoint_dir: Path = Path("artifacts/checkpoints")
     save_best_checkpoint: bool = True
     best_checkpoint_metric: BestCheckpointMetric = "max_tile"
