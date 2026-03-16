@@ -261,7 +261,11 @@ After policy-evaluation episodes, policy improvement moves each local policy tow
 
 $$\pi_{\text{new}}(\cdot \mid z) = (1-\tau)\pi_{\text{old}}(\cdot \mid z) + \tau\pi_{\text{greedy}}(\cdot \mid z)$$
 
-where $\tau = \text{train\_policy\_tau}$.
+where 
+
+```math
+\tau = \text{train\_policy\_tau}
+```
 
 ### 10.5. Exploration policy ($\epsilon$-greedy)
 
@@ -274,7 +278,9 @@ $$A_t = \begin{cases} \text{uniform random from } \mathcal{A}_{\text{valid}}(s_t
 
 For a valid move (`changed=True`), the reward is:
 
-$$r_{t+1} = (\text{merge\_gain}) \cdot c_{\text{score}} + c_{\text{large}} \cdot (\text{merge\_gain})^2 + (\Delta \text{empty}) \cdot c_{\text{empty}} + (\Delta \text{max\_exp}) \cdot c_{\text{max}} + (\Delta \text{snake}) \cdot c_{\text{snake}} + b_{\text{corner}} + b_{\text{target}} - p_{\text{stagnation}}$$
+```math
+r_{t+1} = (\text{merge\_gain}) \cdot c_{\text{score}} + c_{\text{large}} \cdot (\text{merge\_gain})^2 + (\Delta \text{empty}) \cdot c_{\text{empty}} + (\Delta \text{max\_exp}) \cdot c_{\text{max}} + (\Delta \text{snake}) \cdot c_{\text{snake}} + b_{\text{corner}} + b_{\text{target}} - p_{\text{stagnation}}
+```
 
 In code terms, these coefficients correspond to:
 
@@ -292,7 +298,9 @@ And additive terms are controlled by:
 
 For an invalid move (`changed=False`), the base reward is:
 
-$$r_{t+1} = \text{invalid\_move\_penalty}$$
+```math
+r_{t+1} = \text{invalid\_move\_penalty}
+```
 
 with possible stagnation penalty applied by the same threshold logic.
 
@@ -301,7 +309,12 @@ with possible stagnation penalty applied by the same threshold logic.
 
 The global action is selected from local tables by one of two aggregators:
 
-* **`majority_vote`**: Each local feature $z \in \{z^{(i)}\}$ votes for its best valid action: $\text{argmax}_{a \in \mathcal{A}_{\text{valid}}} Q(z, a)$.
+* **`majority_vote`**: Each local feature $z \in \{z^{(i)}\}$ votes for its best valid action: 
+
+```math
+\text{argmax}_{a \in \mathcal{A}_{\text{valid}}} Q(z, a)
+```
+
 * **`weighted_majority_vote`**: The same voting, but each vote is weighted by feature statistics (e.g., max tile or sum of tiles within the pattern).
 
 Thus, learning remains local in $Q(z,a)$, while acting is global through vote aggregation.
