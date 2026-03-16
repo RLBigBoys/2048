@@ -233,7 +233,9 @@ $$
 
 The implementation does not learn one global table over full boards. Instead, each board is transformed into local tagged features:
 
-$$z_t = (\text{feature_name}, \text{feature_tuple}) \in \mathcal{Z}$$
+```math
+z_t = (\text{feature\_name}, \text{feature\_tuple}) \in \mathcal{Z}$$
+```
 
 For each local state $z$, the agent stores a vector of action values:
 
