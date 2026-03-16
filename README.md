@@ -409,7 +409,7 @@ Currently, the project includes:
 - a separate `evaluate.py` script to run an already trained agent
 
 ### Video
-![Video of q-learning](video\qlearning2048.gif)
+![Video of q-learning](video/qlearning2048.gif)
 
 Full videos of evaluation available on `./video` folder
 
