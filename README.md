@@ -306,6 +306,10 @@ After adding `epsilon decay`:
 - rare good episodes started to appear more often
 - training stopped being completely “noisy”
 
+The figure below shows the training learning curves (per-episode values and running means):
+
+![2048 Training Learning Curves](learning_curves/value_iteration_learning_curve.png)
+
 ### After corner strategy and anti-stagnation reward
 
 After adding:
@@ -316,6 +320,10 @@ it became clear that:
 - score continues to grow
 - `max_tile` reaches `512` noticeably more often
 - but the agent still has not reliably reached `1024` and `2048`
+
+To better see the late-training dynamics with exponential smoothing and exponential scaling of episode returns, we also use:
+
+![Episode reward and score with exponential smoothing and exp. scaling](learning_curves/exp_scaling.png)
 
 ## 12. Current state of the project
 
@@ -377,5 +385,3 @@ Without visualization:
 ```bash
 PYTHONPATH=src python evaluate.py --no-visualize
 ```
-
-все формулы переведи в latex стиль для md, чтобы они красиво отображались на GH
