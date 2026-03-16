@@ -408,6 +408,11 @@ Currently, the project includes:
 - `pygame` visualization
 - a separate `evaluate.py` script to run an already trained agent
 
+### Video
+![Video of q-learning](video\qlearning2048.gif)
+
+Full videos of evaluation available on `./video` folder
+
 ## 13. Main takeaway at this stage
 
 The project has moved far beyond a “simple 2048 environment” and has become a full RL setup with:
